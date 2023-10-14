@@ -1,6 +1,6 @@
---- !Config
 keyword: israel
 count: 30
-email: EMAIL
-password: PASSWORD
+credentials:
+  email: EMAIL
+  password: PASSWORD
 
