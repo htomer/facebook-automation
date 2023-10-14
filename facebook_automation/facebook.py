@@ -9,11 +9,20 @@ from selenium.webdriver.common.keys import Keys
 FACEBOOK_URL = "https://www.facebook.com"
 
 
+class Credentials():
+    def __init__(self, email: str, password: str):
+        self.email = email
+        self.password = password
+
+    def __repr__(self) -> str:
+        return "%s(email=%r, pass=%r)" % (self.__class__.__name__, self.email, self.password)
+
+
 class Facebook:
 
-    def __init__(self, file: str = 'facebook_credentials.txt'):
+    def __init__(self, credentials: Credentials):
 
-        self.file = file
+        self.credentials = credentials
 
     def __enter__(self):
         option = Options()
@@ -36,20 +45,16 @@ class Facebook:
         self.driver.close()
 
     def login(self):
-        # extract username + password.
-        with open(self.file) as file:
-            EMAIL = file.readline().split('"')[1]
-            PASSWORD = file.readline().split('"')[1]
 
         self.driver.maximize_window()
         wait = WebDriverWait(self.driver, 30)
         email_field = wait.until(
             EC.presence_of_element_located((By.NAME, 'email')))
-        email_field.send_keys(EMAIL)
+        email_field.send_keys(self.credentials.email)
         pass_field = wait.until(
             EC.presence_of_element_located((By.NAME, 'pass'))
         )
-        pass_field.send_keys(PASSWORD)
+        pass_field.send_keys(self.credentials.password)
         pass_field.send_keys(Keys.RETURN)
 
         time.sleep(2)
