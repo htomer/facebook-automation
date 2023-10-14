@@ -90,6 +90,9 @@ class Facebook:
                 self.driver.execute_script(
                     "window.scrollTo(0, document.body.scrollHeight);")
 
+                # Allow time for new results to load
+                time.sleep(2)
+
             except Exception as e:
                 print(f"Error collecting group names: {e}")
                 break
