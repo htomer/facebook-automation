@@ -1,10 +1,10 @@
 import time
 from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.keys import Keys
 
 FACEBOOK_URL = "https://www.facebook.com"
 
@@ -44,33 +44,49 @@ class Facebook:
         self.driver.maximize_window()
         wait = WebDriverWait(self.driver, 30)
         email_field = wait.until(
-            EC.visibility_of_element_located((By.NAME, 'email')))
+            EC.presence_of_element_located((By.NAME, 'email')))
         email_field.send_keys(EMAIL)
         pass_field = wait.until(
-            EC.visibility_of_element_located((By.NAME, 'pass')))
+            EC.presence_of_element_located((By.NAME, 'pass'))
+        )
         pass_field.send_keys(PASSWORD)
         pass_field.send_keys(Keys.RETURN)
 
         time.sleep(2)
 
-    def search_groups(self, group_name: str, group_num: int = 3):
+    def search_groups(self, keyword: str, count: int = 3) -> list:
         self.driver.get(FACEBOOK_URL + "/groups/feed/")
 
-        # Wait for the groups page to load.
-        time.sleep(5)
-
+        wait = WebDriverWait(self.driver, 30)
         search_bar = self.driver.find_element(
             By.XPATH, "//input[@aria-label='Search groups']")
 
         search_bar.clear()
-        search_bar.send_keys(group_name)
+        search_bar.send_keys(keyword)
         search_bar.send_keys(Keys.RETURN)
 
-        # Wait for the search results to load
-        time.sleep(5)
+        group_names = set()
 
-        group_names = []
+        while len(group_names) < count:
+            try:
+                # Wait for the search results to load
+                wait.until(EC.presence_of_element_located(
+                    (By.XPATH, "//div[contains(@role, 'feed')]")))
 
-        # TODO: append all groups to list.
+                group_elements = self.driver.find_elements(
+                    By.XPATH, f"//a[contains(text(), '{keyword}')]")
+                for group_element in group_elements:
+                    group_name = group_element.text
+                    group_names.add(group_name)
+                    if len(group_names) >= count:
+                        break
 
-        return group_names
+                # Scroll down to load more results
+                self.driver.execute_script(
+                    "window.scrollTo(0, document.body.scrollHeight);")
+
+            except Exception as e:
+                print(f"Error collecting group names: {e}")
+                break
+
+        return list(group_names)
