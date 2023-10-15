@@ -77,6 +77,9 @@ class Facebook:
                 # Wait for the search results to load
                 wait.until(EC.presence_of_element_located(
                     (By.XPATH, "//div[contains(@role, 'feed')]")))
+                
+                # Allow time for new results to load
+                time.sleep(2)
 
                 group_elements = self.driver.find_elements(
                     By.XPATH, f"//a[contains(text(), '{keyword}')]")
@@ -89,9 +92,6 @@ class Facebook:
                 # Scroll down to load more results
                 self.driver.execute_script(
                     "window.scrollTo(0, document.body.scrollHeight);")
-
-                # Allow time for new results to load
-                time.sleep(2)
 
             except Exception as e:
                 print(f"Error collecting group names: {e}")
