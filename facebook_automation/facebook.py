@@ -1,5 +1,7 @@
 import re
 import time
+import random
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
@@ -7,7 +9,6 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webelement import WebElement
-import random
 
 FACEBOOK_URL = "https://www.facebook.com"
 
@@ -60,7 +61,6 @@ class Facebook:
         time.sleep(1)
         pass_field.send_keys(self.credentials.password)
         pass_field.send_keys(Keys.RETURN)
-
         time.sleep(2)
 
     @staticmethod
@@ -81,11 +81,9 @@ class Facebook:
 
         return None  # Return None if no match is found
 
-    def _extract_group_data(self, group: WebElement) -> list:
+    def _extract_group_data(self, group: WebElement) -> tuple:
         # Get the raw inner text of the group and split to lines.
         lines = group.get_property("innerText").splitlines()
-
-        print(lines)
 
         # Extract the name of the group from the first line.
         name = lines[0]
@@ -96,24 +94,17 @@ class Facebook:
         # Convert the "members" string to an integer.
         members_int = self._extract_number(members)
 
-        # Return a list containing the extracted data.
-        return [name, option, members, posts, members_int]
+        # Return a tuple containing the extracted data.
+        return (name, option, members, posts, members_int)
 
-    def _get_groups_data(self) -> list:
+    def _get_groups_data(self):
         ''' Funtion that reads all available group data and writes it to a file. '''
         groups = self.driver.find_elements(By.CLASS_NAME, "x1yztbdb")
-
-        group_list = []
 
         for group in groups:
 
             # Extract group data line from the group.
-            group_data = self._extract_group_data(group)
-
-            # Add data to list.
-            group_list.append(group_data)
-
-        return group_list
+            yield self._extract_group_data(group)
 
     def search_groups(self, keyword: str, count: int = 3) -> list:
         self.driver.get(FACEBOOK_URL + "/groups/feed/")
@@ -126,8 +117,8 @@ class Facebook:
         search_bar.send_keys(keyword)
         search_bar.send_keys(Keys.RETURN)
 
-        # Empty list for group data.
-        groups = []
+        # Empty set for group data.
+        groups = set()
 
         while len(groups) < count:
             try:
@@ -139,8 +130,8 @@ class Facebook:
                 time.sleep(3)
 
                 # Get all groups data.
-                l = self._get_groups_data()
-                groups.extend([x for x in l if not x in groups])
+                for group_data in self._get_groups_data():
+                    groups.add(group_data)
 
                 # Allow time for new results to load
                 time.sleep(10 + random.randint(0, 25))
@@ -153,4 +144,4 @@ class Facebook:
                 print(f"Error collecting group names: {e}")
                 break
 
-        return groups
+        return sorted(groups, key=lambda item: item[-1], reverse=True)
