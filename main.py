@@ -1,53 +1,34 @@
 
-from typing import Optional
-from facebook_automation.facebook import Credentials, Facebook
-import yaml
+from facebook_automation.config import Config
+from facebook_automation.facebook import Facebook
+import csv
+import os
 
 
-class Config():
+def save_group_names_to_file(group_data: list, file_name: str = "groups_output.csv"):
+    def next_non_exists(f):
+        fnew = f
+        root, ext = os.path.splitext(f)
+        i = 0
+        while os.path.exists(fnew):
+            i += 1
+            fnew = '%s_%i%s' % (root, i, ext)
+        return fnew
 
-    def __init__(self, keyword: str, count: str, credentials):
-        self.keyword = keyword
-        self.count = count
-        self.credentials = Credentials(**credentials)
+    with open(next_non_exists(file_name), 'w', encoding="utf-8-sig", newline='') as file:
+        # create the csv writer
+        writer = csv.writer(file)
 
-    def __repr__(self) -> str:
-        return "%s(keyword=%r, count=%r, %r)" % (self.__class__.__name__, self.keyword, self.count, self.credentials)
+        # write header.
+        # writer.writerow("[name", "option", "members", "posts", "members_int"])
 
-
-def save_group_names_to_file(group_names: list, file_name: str = "group_names.txt"):
-    with open(file_name, 'w', encoding="utf-8") as file:
-        for name in group_names:
-            file.write(name + '\n')
-
-
-def dump_default_config_to_file(file_name: str):
-    default_config = {"keyword": "israel", "count": 30}
-    default_creds = {"credentials": {"email": "EMAIL", "password": "PASSWORD"}}
-    with open(file_name, "w") as file:
-        yaml.dump(default_config, file)
-        yaml.dump(default_creds, file)
-
-
-def load_config_from_file(file_name: str = 'config.yml') -> Optional[Config]:
-    try:
-        # Load configs file.
-        with open('config.yml', 'r') as yaml_file:
-            config_data = yaml.load(yaml_file, Loader=yaml.FullLoader)
-
-        # Load data from file into config intance.
-        return Config(**config_data)
-    except OSError as e:
-
-        # Dump default configs.
-        dump_default_config_to_file(file_name)
-
-        return None
+        # write data.
+        writer.writerows(group_data)
 
 
 def main():
     # Read configs from file.
-    config = load_config_from_file()
+    config = Config.load_config_from_file()
 
     if config is None:
         return
@@ -58,10 +39,10 @@ def main():
         facebook.login()
 
         # Search for groups containing the requested keyword and get group names.
-        group_names = facebook.search_groups(config.keyword, config.count)
+        group_data = facebook.search_groups(config.keyword, config.count)
 
         # Save the group names to a file.
-        save_group_names_to_file(group_names)
+        save_group_names_to_file(group_data)
 
 
 if __name__ == "__main__":

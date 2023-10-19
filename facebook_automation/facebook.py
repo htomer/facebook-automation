@@ -1,3 +1,4 @@
+import re
 import time
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -5,6 +6,8 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.remote.webelement import WebElement
+import random
 
 FACEBOOK_URL = "https://www.facebook.com"
 
@@ -45,19 +48,72 @@ class Facebook:
         self.driver.close()
 
     def login(self):
-
         self.driver.maximize_window()
         wait = WebDriverWait(self.driver, 30)
         email_field = wait.until(
             EC.presence_of_element_located((By.NAME, 'email')))
+        time.sleep(1)
         email_field.send_keys(self.credentials.email)
         pass_field = wait.until(
             EC.presence_of_element_located((By.NAME, 'pass'))
         )
+        time.sleep(1)
         pass_field.send_keys(self.credentials.password)
         pass_field.send_keys(Keys.RETURN)
 
         time.sleep(2)
+
+    @staticmethod
+    def _extract_number(text: str):
+        # Use regular expressions to extract the number and the multiplier (if any)
+        match = re.search(r'(\d+(\.\d+)?)([Kk]?)\s+members', text)
+
+        if match:
+            number_str, _, multiplier = match.groups()
+
+            # Convert the number to a float (if there's a decimal point)
+            number = float(number_str)
+
+            # Adjust the number based on the multiplier
+            if multiplier.lower() == 'k':
+                number *= 1000  # 1K means 1000
+            return int(number)  # Convert the result to an integer
+
+        return None  # Return None if no match is found
+
+    def _extract_group_data(self, group: WebElement) -> list:
+        # Get the raw inner text of the group and split to lines.
+        lines = group.get_property("innerText").splitlines()
+
+        print(lines)
+
+        # Extract the name of the group from the first line.
+        name = lines[0]
+
+        # Extract basic data of the group from the second line.
+        [option, members, posts, *_] = lines[1].split('·') + [None]*2
+
+        # Convert the "members" string to an integer.
+        members_int = self._extract_number(members)
+
+        # Return a list containing the extracted data.
+        return [name, option, members, posts, members_int]
+
+    def _get_groups_data(self) -> list:
+        ''' Funtion that reads all available group data and writes it to a file. '''
+        groups = self.driver.find_elements(By.CLASS_NAME, "x1yztbdb")
+
+        group_list = []
+
+        for group in groups:
+
+            # Extract group data line from the group.
+            group_data = self._extract_group_data(group)
+
+            # Add data to list.
+            group_list.append(group_data)
+
+        return group_list
 
     def search_groups(self, keyword: str, count: int = 3) -> list:
         self.driver.get(FACEBOOK_URL + "/groups/feed/")
@@ -70,24 +126,24 @@ class Facebook:
         search_bar.send_keys(keyword)
         search_bar.send_keys(Keys.RETURN)
 
-        group_names = set()
+        # Empty list for group data.
+        groups = []
 
-        while len(group_names) < count:
+        while len(groups) < count:
             try:
                 # Wait for the search results to load
                 wait.until(EC.presence_of_element_located(
                     (By.XPATH, "//div[contains(@role, 'feed')]")))
-                
-                # Allow time for new results to load
-                time.sleep(2)
 
-                group_elements = self.driver.find_elements(
-                    By.XPATH, f"//a[contains(text(), '{keyword}')]")
-                for group_element in group_elements:
-                    group_name = group_element.text
-                    group_names.add(group_name)
-                    if len(group_names) >= count:
-                        break
+                # Allow time for new results to load
+                time.sleep(3)
+
+                # Get all groups data.
+                l = self._get_groups_data()
+                groups.extend([x for x in l if not x in groups])
+
+                # Allow time for new results to load
+                time.sleep(10 + random.randint(0, 25))
 
                 # Scroll down to load more results
                 self.driver.execute_script(
@@ -97,4 +153,4 @@ class Facebook:
                 print(f"Error collecting group names: {e}")
                 break
 
-        return list(group_names)
+        return groups
