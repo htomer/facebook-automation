@@ -1,13 +1,13 @@
 
 import csv
 import os
-from typing import Iterable
+from typing import Any, Iterable
 
 from facebook_automation.config import Config
 from facebook_automation.facebook import Facebook
 
 
-def save_groups_to_file(group_data: Iterable, file_name: str = "groups_output.csv"):
+def save_groups_to_file(group_data: Iterable[Iterable[Any]], file_name: str = "groups_output.csv"):
     def next_non_exists(f):
         fnew = f
         root, ext = os.path.splitext(f)
@@ -43,8 +43,8 @@ def main():
         # Search for groups containing the requested keyword and get group names.
         group_data = facebook.search_groups(config.keyword, config.count)
 
-        # Save the group names to a file.
-        save_groups_to_file(group_data)
+    # Save the group names to a file.
+    save_groups_to_file(group_data)
 
 
 if __name__ == "__main__":

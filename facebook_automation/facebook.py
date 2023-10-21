@@ -1,25 +1,16 @@
-import re
 import time
 import random
-
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.remote.webelement import WebElement
+
+from facebook_automation.credentials import Credentials
+from facebook_automation.group import Group
 
 FACEBOOK_URL = "https://www.facebook.com"
-
-
-class Credentials():
-    def __init__(self, email: str, password: str):
-        self.email = email
-        self.password = password
-
-    def __repr__(self) -> str:
-        return "%s(email=%r, pass=%r)" % (self.__class__.__name__, self.email, self.password)
 
 
 class Facebook:
@@ -63,50 +54,17 @@ class Facebook:
         pass_field.send_keys(Keys.RETURN)
         time.sleep(2)
 
-    @staticmethod
-    def _extract_number(text: str):
-        # Use regular expressions to extract the number and the multiplier (if any)
-        match = re.search(r'(\d+(\.\d+)?)([Kk]?)\s+members', text)
+    def search_groups(self, keyword: str, count: int) -> list[Group]:
+        ''' Function for automates a search for groups related to a specified keyword 
+            and returns a list of group results.
 
-        if match:
-            number_str, _, multiplier = match.groups()
+            Parameters:
+                - keyword (str): The keyword used for the search query.
+                - count (int): The minimum number of group results to return.
 
-            # Convert the number to a float (if there's a decimal point)
-            number = float(number_str)
-
-            # Adjust the number based on the multiplier
-            if multiplier.lower() == 'k':
-                number *= 1000  # 1K means 1000
-            return int(number)  # Convert the result to an integer
-
-        return None  # Return None if no match is found
-
-    def _extract_group_data(self, group: WebElement) -> tuple:
-        # Get the raw inner text of the group and split to lines.
-        lines = group.get_property("innerText").splitlines()
-
-        # Extract the name of the group from the first line.
-        name = lines[0]
-
-        # Extract basic data of the group from the second line.
-        [option, members, posts, *_] = lines[1].split('·') + [None]*2
-
-        # Convert the "members" string to an integer.
-        members_int = self._extract_number(members)
-
-        # Return a tuple containing the extracted data.
-        return (name, option, members, posts, members_int)
-
-    def _get_groups_data(self):
-        ''' Funtion that reads all available group data and writes it to a file. '''
-        groups = self.driver.find_elements(By.CLASS_NAME, "x1yztbdb")
-
-        for group in groups:
-
-            # Extract group data line from the group.
-            yield self._extract_group_data(group)
-
-    def search_groups(self, keyword: str, count: int = 3) -> list:
+            Returns:
+                - list: A list of group objects that match the keyword search.
+        '''
         self.driver.get(FACEBOOK_URL + "/groups/feed/")
 
         wait = WebDriverWait(self.driver, 30)
@@ -117,8 +75,8 @@ class Facebook:
         search_bar.send_keys(keyword)
         search_bar.send_keys(Keys.RETURN)
 
-        # Empty set for group data.
-        groups = set()
+        # Empty set for groups.
+        groups: set[Group] = set()
 
         while len(groups) < count:
             try:
@@ -127,11 +85,10 @@ class Facebook:
                     (By.XPATH, "//div[contains(@role, 'feed')]")))
 
                 # Allow time for new results to load
-                time.sleep(3)
+                time.sleep(6)
 
-                # Get all groups data.
-                for group_data in self._get_groups_data():
-                    groups.add(group_data)
+                # Add new groups to the set.
+                groups.update(Group.get_groups(self.driver))
 
                 # Allow time for new results to load
                 time.sleep(10 + random.randint(0, 25))
@@ -144,4 +101,4 @@ class Facebook:
                 print(f"Error collecting group names: {e}")
                 break
 
-        return sorted(groups, key=lambda item: item[-1], reverse=True)
+        return sorted(groups, key=lambda item: item.members_int, reverse=True)
