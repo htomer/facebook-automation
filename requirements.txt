@@ -22,6 +22,8 @@ idna==3.4
     # via trio
 outcome==1.2.0
     # via trio
+pillow==10.1.0
+    # via ttkthemes
 pycparser==2.21
     # via cffi
 pysocks==1.7.1
@@ -40,6 +42,8 @@ trio==0.22.2
     #   trio-websocket
 trio-websocket==0.11.1
     # via selenium
+ttkthemes==3.2.2
+    # via -r requirements.in
 urllib3[socks]==2.0.6
     # via selenium
 wsproto==1.2.0
