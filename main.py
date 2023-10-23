@@ -30,9 +30,11 @@ def save_groups_to_file(group_data: Iterable[Iterable[Any]], file_name: str = "g
 
 def main():
     # Read configs from file.
-    config = Config.load_config_from_file()
-
+    config = Config.load_from_file_yaml()
     if config is None:
+
+        # Dump default configs.
+        Config().dump_to_file_yaml()
         return
 
     # Initialize the Facebook class

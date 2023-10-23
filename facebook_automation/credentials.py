@@ -1,8 +1,11 @@
 
-class Credentials():
-    def __init__(self, email: str, password: str):
-        self.email = email
-        self.password = password
+from dataclasses import dataclass
 
-    def __repr__(self) -> str:
-        return "%s(email=%r, pass=%r)" % (self.__class__.__name__, self.email, self.password)
+
+@dataclass
+class Credentials():
+    email: str = "EMAIL"
+    password: str = "PASSWORD"
+
+    def to_dict(self) -> dict:
+        return {'email': self.email, 'password': self.password}

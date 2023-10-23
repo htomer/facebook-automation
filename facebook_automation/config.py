@@ -1,38 +1,44 @@
-from facebook_automation.facebook import Credentials
+from dataclasses import dataclass, field, fields
 import yaml
 
+from facebook_automation.facebook import Credentials
 
+DEFAULT_CONFIG_FILE = "config.yml"
+
+
+@dataclass()
 class Config():
+    keyword: str = "israel"
+    count: int = 30
+    credentials: Credentials = field(default_factory=dict)
 
-    def __init__(self, keyword: str, count: str, credentials):
-        self.keyword = keyword
-        self.count = count
-        self.credentials = Credentials(**credentials)
-
-    def __repr__(self) -> str:
-        return "%s(keyword=%r, count=%r, %r)" % (self.__class__.__name__, self.keyword, self.count, self.credentials)
-
-    @staticmethod
-    def dump_default_config_to_file(file_name: str):
-        default_config = {"keyword": "israel", "count": 30}
-        default_creds = {"credentials": {
-            "email": "EMAIL", "password": "PASSWORD"}}
-        with open(file_name, "w") as file:
-            yaml.dump(default_config, file)
-            yaml.dump(default_creds, file)
+    def __post_init__(self):
+        # Create credentials instance.
+        self.credentials = Credentials(**self.credentials)
 
     @classmethod
-    def load_config_from_file(cls, file_name: str = 'config.yml'):
+    def from_dict(cls, d: dict) -> "Config":
+        field_names = (field.name for field in fields(cls))
+        return cls(**{k: v for k, v in d.items() if k in field_names})
+
+    def to_dict(self) -> dict:
+        return {'keyword': self.keyword, 'count': self.count, 'credentials': self.credentials.to_dict()}
+
+    def dump_to_file_yaml(self, file_name: str = DEFAULT_CONFIG_FILE):
+        with open(file_name, "w") as f:
+            yaml.dump(self.to_dict(), f, sort_keys=False)
+
+    @classmethod
+    def load_from_file_yaml(cls, file_name: str = DEFAULT_CONFIG_FILE) -> "Config":
         try:
             # Load configs file.
-            with open('config.yml', 'r') as yaml_file:
+            with open(file_name, 'r') as yaml_file:
                 config_data = yaml.load(yaml_file, Loader=yaml.FullLoader)
 
-            # Load data from file into config intance.
-            return cls(**config_data)
+                # Load data from file into config intance.
+                return cls.from_dict(config_data)
+
         except OSError as e:
 
-            # Dump default configs.
-            cls.dump_default_config_to_file(file_name)
-
+            # No config file available.
             return None
