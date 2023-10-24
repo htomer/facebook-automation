@@ -15,44 +15,62 @@ FACEBOOK_URL = "https://www.facebook.com"
 
 class Facebook:
 
-    def __init__(self, credentials: Credentials):
+    def __init__(self):
 
-        self.credentials = credentials
+        self.option = Options()
 
-    def __enter__(self):
-        option = Options()
-
-        option.add_argument("--disable-infobars")
-        option.add_argument("start-maximized")
-        option.add_argument("--disable-extensions")
+        self.option.add_argument("--disable-infobars")
+        self.option.add_argument("start-maximized")
+        self.option.add_argument("--disable-extensions")
 
         # Pass the argument 1 to allow and 2 to block
-        option.add_experimental_option(
+        self.option.add_experimental_option(
             "prefs", {"profile.default_content_setting_values.notifications": 2}
         )
 
-        self.driver = webdriver.Chrome(options=option)
-        self.driver.get(FACEBOOK_URL)
+        self.login_flag = False
+
+    '''def __enter__(self):
 
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.driver.close()
+        self.driver.close()'''
 
-    def login(self):
+    def login(self, credentials: Credentials):
+        self.driver = webdriver.Chrome(options=self.option)
+        self.driver.get(FACEBOOK_URL)
+
         self.driver.maximize_window()
         wait = WebDriverWait(self.driver, 30)
         email_field = wait.until(
             EC.presence_of_element_located((By.NAME, 'email')))
         time.sleep(1)
-        email_field.send_keys(self.credentials.email)
+        email_field.send_keys(credentials.email)
         pass_field = wait.until(
             EC.presence_of_element_located((By.NAME, 'pass'))
         )
         time.sleep(1)
-        pass_field.send_keys(self.credentials.password)
+        pass_field.send_keys(credentials.password)
         pass_field.send_keys(Keys.RETURN)
         time.sleep(2)
+
+        try:
+            login_container = self.driver.find_element(
+                By.CLASS_NAME, "login_form_container")
+
+            error_message = login_container.get_property(
+                "innerText").splitlines()[0]
+
+        except Exception:
+            self.login_flag = True
+
+        else:
+
+            raise Exception(error_message)
+
+    def logout(self):
+        self.driver.close()
 
     def search_groups(self, keyword: str, count: int) -> list[Group]:
         ''' Function for automates a search for groups related to a specified keyword 
