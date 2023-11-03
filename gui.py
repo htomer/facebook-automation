@@ -1,6 +1,4 @@
 import threading
-import time
-import os
 import tkinter as tk                # python 3
 from tkinter import font as tkfont  # python 3
 from tkinter import ttk
@@ -8,10 +6,10 @@ from tkinter import messagebox
 from typing import Callable
 from ttkthemes import ThemedStyle
 
-import yaml
+from facebook_automation.config import Config
 from facebook_automation.credentials import Credentials
-
 from facebook_automation.facebook import Facebook
+from facebook_automation.groups import groups_save_to_file
 
 
 class BarFrame(tk.Frame):
@@ -179,6 +177,8 @@ class FbAutomationkApp(tk.Tk):
         # Facebook instance.
         # self.facebook: Facebook = None
         self.facebook: Facebook = Facebook()
+        self.config: Config = Config.load_from_file_yaml() or Config()
+        print(self.config)
 
         # Padding.
         self.grid_padx = 30
@@ -188,6 +188,9 @@ class FbAutomationkApp(tk.Tk):
         self.bigfont = tkfont.Font(family="Helvetica", size=14)
         self.smallfont = tkfont.Font(family="Helvetica", size=10)
         self.option_add("*Font", self.bigfont)
+
+        # Ad exit operation.
+        self.protocol("WM_DELETE_WINDOW", self.exit)
 
         self.frames = {}
         for F in (LoginPage, GroupPage):
@@ -240,6 +243,15 @@ class FbAutomationkApp(tk.Tk):
 
         # Add to threads list.
         self.threads_list.append(work_thread)
+
+    def exit(self):
+        print("exit")
+
+        # Logout from facebook.
+        self.facebook.logout()
+
+        # Quit the program.
+        self.quit()
 
 
 class LoginPage(tk.Frame):
@@ -297,12 +309,16 @@ class LoginPage(tk.Frame):
         app_frame.grid_columnconfigure(1)
 
     def tkraise(self, aboveThis=None):
+        # Load credentials from file.
+        credentials = self.controller.config.credentials
+        self.email.set(credentials.email)
+        self.password.set(credentials.password)
 
         return super().tkraise(aboveThis)
 
     def login(self):
 
-        # Get credentials.
+        # Get credentials from gui entries.
         credentials = Credentials(
             email=self.email.get(),
             password=self.password.get())
@@ -312,6 +328,10 @@ class LoginPage(tk.Frame):
 
         print("Login to facebook sucesfully.")
         self.controller.show_frame("GroupPage")
+
+        # Set new credentials to the file.
+        self.controller.config.credentials = credentials
+        self.controller.config.dump_to_file_yaml()
 
 
 class GroupPage(tk.Frame):
@@ -370,6 +390,11 @@ class GroupPage(tk.Frame):
 
     def tkraise(self, aboveThis=None):
 
+        # Load credentials from file.
+        config = self.controller.config
+        self.search_word.set(config.keyword)
+        self.group_number.set(config.count)
+
         return super().tkraise(aboveThis)
 
     def search_groups(self):
@@ -377,19 +402,21 @@ class GroupPage(tk.Frame):
 
         # Get values from the GUI fields
         keyword = self.search_word.get()
-        count = self.group_number.get()
+        count = int(self.group_number.get())
 
         # Search for groups containing the requested keyword and get group names.
         group_data = self.controller.facebook.search_groups(keyword, count)
 
         # Save the group names to a file.
-        save_groups_to_file(group_data)
+        groups_save_to_file(group_data)
 
     def logout(self):
         print("Logout")
 
         # Logout from facebook.
         self.controller.facebook.logout()
+
+        # Go to login frame.
         self.controller.show_frame("LoginPage")
 
 

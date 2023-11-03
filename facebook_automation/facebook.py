@@ -6,6 +6,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
+from selenium.common.exceptions import NoSuchElementException
 
 from facebook_automation.credentials import Credentials
 from facebook_automation.group import Group
@@ -62,15 +63,27 @@ class Facebook:
             error_message = login_container.get_property(
                 "innerText").splitlines()[0]
 
-        except Exception:
+        except NoSuchElementException:
+            # Make sure logging succesfully.
             self.login_flag = True
 
-        else:
+        except Exception as e:
+            raise e
 
+        else:
             raise Exception(error_message)
 
     def logout(self):
-        self.driver.close()
+        if not self.login_flag:
+            return
+
+        # Logout from Facebook.
+        self.login_flag = False
+
+        try:
+            self.driver.close()
+        except Exception:
+            pass
 
     def search_groups(self, keyword: str, count: int) -> list[Group]:
         ''' Function for automates a search for groups related to a specified keyword 
@@ -97,26 +110,22 @@ class Facebook:
         groups: set[Group] = set()
 
         while len(groups) < count:
-            try:
-                # Wait for the search results to load
-                wait.until(EC.presence_of_element_located(
-                    (By.XPATH, "//div[contains(@role, 'feed')]")))
 
-                # Allow time for new results to load
-                time.sleep(6)
+            # Wait for the search results to load
+            wait.until(EC.presence_of_element_located(
+                (By.XPATH, "//div[contains(@role, 'feed')]")))
 
-                # Add new groups to the set.
-                groups.update(Group.get_groups(self.driver))
+            # Allow time for new results to load
+            time.sleep(6)
 
-                # Allow time for new results to load
-                time.sleep(10 + random.randint(0, 25))
+            # Add new groups to the set.
+            groups.update(Group.get_groups(self.driver))
 
-                # Scroll down to load more results
-                self.driver.execute_script(
-                    "window.scrollTo(0, document.body.scrollHeight);")
+            # Allow time for new results to load
+            time.sleep(10 + random.randint(0, 25))
 
-            except Exception as e:
-                print(f"Error collecting group names: {e}")
-                break
+            # Scroll down to load more results
+            self.driver.execute_script(
+                "window.scrollTo(0, document.body.scrollHeight);")
 
         return sorted(groups, key=lambda item: item.members_int, reverse=True)

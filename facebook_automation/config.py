@@ -18,7 +18,7 @@ class Config():
 
     @classmethod
     def from_dict(cls, d: dict) -> "Config":
-        field_names = (field.name for field in fields(cls))
+        field_names = [field.name for field in fields(cls)]
         return cls(**{k: v for k, v in d.items() if k in field_names})
 
     def to_dict(self) -> dict:
@@ -35,10 +35,12 @@ class Config():
             with open(file_name, 'r') as yaml_file:
                 config_data = yaml.load(yaml_file, Loader=yaml.FullLoader)
 
+                print(config_data)
+
                 # Load data from file into config intance.
                 return cls.from_dict(config_data)
 
         except OSError as e:
-
+            print('here')
             # No config file available.
             return None
